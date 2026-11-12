@@ -2,6 +2,8 @@
 
 **workbench-miniapp 官方示例小程序**，面向开发者展示如何通过 Mira-App-SDK 使用 Workbench 开放的小程序能力。项目名称为 `workbench-sdk-playground`。
 
+通用开发指南、包格式、SDK 权限与社区列表统一维护在 [Workbench Miniapps 文档仓库](https://github.com/MiraWorkspace/Mira-Workbench-miniapps)。本仓库提供可运行示例及自身的构建、验证和发布脚本。
+
 项目包含 28 个可执行示例，覆盖连接、模型对话、联网搜索、应用存储、文件、主题、通知和权限错误处理。每个示例都提供用途、所需权限、可编辑 JSON 参数、实际执行的 SDK 代码、返回值或错误，以及验证步骤和源码位置。开发者可以在演示台中执行调用，再将对应代码用于自己的小程序。
 
 ## 运行要求
@@ -148,19 +150,13 @@ npm test
 
 本地验证结果与验收边界见 [VALIDATION.md](VALIDATION.md)。
 
-## 发布你的小程序
+## 本示例的线上发布
 
-分发方式参考 [Cherry Studio 小程序文档](https://github.com/CherryHQ/cherry-studio-miniapps/blob/main/README.zh-CN.md)：源码、安装包由开发者自己的仓库和静态站点维护，GitHub Topic 用于发现。Workbench 项目统一使用 **`workbench-miniapp`**，仓库 Website 填写安装清单地址。
+通用的清单格式、托管要求、版本更新和社区收录说明统一维护在 [Workbench Miniapps 发布指南](https://github.com/MiraWorkspace/Mira-Workbench-miniapps/blob/main/docs/publishing.md)。
 
-本仓库提供可复用的发布流程：
+本仓库的 `npm run build` 生成 `site/manifest.json` 与 `site/releases/<version>/<id>-<version>.miniapp`，摘要和字节数来自最终包。`.github/workflows/pages.yml` 在 main 推送时部署 GitHub Pages，将已发布版本包保留在 `gh-pages`；相同版本的字节变化会使发布失败。
 
-1. 在包内 `miniapp-manifest.json` 配置稳定的 HTTPS `update.url`，版本与 `package.json` 一致。已经发布的版本不覆盖；修改后准备发布时再升级版本。
-2. `npm ci && npm run build` 生成本地包以及 `site/manifest.json`、`site/releases/<version>/<id>-<version>.miniapp`。归档使用固定时间戳，同一输入可以重复构建出相同摘要。
-3. 在线清单包含包内全部字段，并附加 `package.url`、`package.sha256`、`package.size`；三项均由最终包自动生成。不要手写摘要或把在线 `package` 字段放回包内清单。
-4. GitHub 仓库 Settings → Pages 选择 GitHub Actions。推送 main 后 `.github/workflows/pages.yml` 构建并部署 `site/`，同时保留此前已发布的版本包；新版本更新稳定的 manifest.json。
-5. 发布后检查清单和包直接返回 HTTP 200、没有重定向，且大小、摘要和包内声明一致。将清单地址提供给用户，在 Workbench 确认权限并安装。
-
-安装规范：清单最多 64 KiB，包最多 64 MiB；两者必须同 HTTPS origin，不含凭证或 URL 片段，不允许重定向。GitHub Releases 可另行提供手动下载，但其附件地址会重定向，不能直接填写为 `package.url`。完整契约见 [Workbench 安装文档](https://github.com/MiraWorkspace/Mira-Workbench/blob/dev/docs/MINIAPP_SDK.md#从网址安装与发布)。当前更新通过用户重新提交清单地址触发，不自动检查更新。
+发布本示例更新时，同步项目和清单版本，检查 `update.url`，构建并验证后推送 main。稳定安装地址保持不变，用户可在 Workbench 再次提交该地址安装更高版本。
 
 ## 目录
 
