@@ -103,6 +103,8 @@ AI 调用按“获取供应商 → 获取模型 → 选择模型 → 生成或�
 
 需要 Node.js 22+、npm、Git，并能访问 GitHub 与依赖仓库。
 
+本项目是独立仓库，可放在任意目录。构建、预览与安装均不要求嵌套在 `test` 或 Mira 源码目录中。
+
 ```sh
 git clone https://github.com/MiraWorkspace/workbench-sdk-playground.git
 cd workbench-sdk-playground
@@ -116,19 +118,15 @@ npm run build
 
 ## 验证
 
+`npm test` 用于维护者运行集成检查，需要额外准备 Mira-Harness 与 Mira-Workbench 源码及其开发依赖，并先运行 `npm run build` 生成安装包。可通过环境变量指定两个源码仓库的位置，无需调整本项目的目录：
+
 ```sh
+MIRA_HARNESS_DIR=/path/to/Mira-Harness \
+MIRA_WORKBENCH_DIR=/path/to/Mira-Workbench \
 npm test
 ```
 
-集成检查需要额外准备 Mira-Harness 与 Mira-Workbench 源码及其开发依赖。当前脚本约定三个项目按以下目录布局放置；单独克隆本仓库即可构建与安装，运行 `npm test` 还需满足此布局。
-
-```text
-Mira/
-├── Mira-Harness/
-├── Mira-Workbench/
-└── test/
-    └── workbench-sdk-playground/
-```
+未设置环境变量时，脚本默认查找本项目同级的 `Mira-Harness` 和 `Mira-Workbench`。这只是集成检查的默认路径，普通开发者构建示例或安装 `.miniapp` 无需准备这两个源码仓库。
 
 检查在临时 Electron profile 中启动测试宿主，从 Workbench 实际安装入口加载 `.miniapp`。检查真实连接、权限、SQLite、文件、目录句柄、主题事件、客户端断连、真实连接释放与重新打开；模型回答、搜索 HTTP、通知发送和原生目录选择使用夹具，不访问外网模型或修改用户数据。测试完成后删除临时 profile。截图写到 `verification/`，不进入安装包。
 

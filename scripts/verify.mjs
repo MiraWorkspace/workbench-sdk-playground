@@ -1,5 +1,5 @@
 // Integration check in a temporary Electron profile. Model/search/notification services use fixtures.
-// Requires sibling Mira-Harness and Mira-Workbench development dependencies; never touches user data.
+// Requires Mira-Harness and Mira-Workbench development dependencies; never touches user data.
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -11,7 +11,8 @@ import { createRequire } from 'node:module'
 import { unzipSync } from 'fflate'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
-const harness = resolve(root, '../../Mira-Harness'), workbench = resolve(root, '../../Mira-Workbench')
+const harness = resolve(process.env.MIRA_HARNESS_DIR || resolve(root, '../Mira-Harness'))
+const workbench = resolve(process.env.MIRA_WORKBENCH_DIR || resolve(root, '../Mira-Workbench'))
 const require = createRequire(join(harness, 'package.json')), { build } = require('esbuild')
 async function verify() {
 const temp = await mkdtemp(join(tmpdir(), 'sdk-playground-check-'))
