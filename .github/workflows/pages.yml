@@ -40,7 +40,10 @@ jobs:
           # Never replace bytes of an existing version, even on a rerun.
           for package in site/releases/*/*.miniapp; do
             if [ -f "publish/${package#site/}" ]; then
-              cmp "$package" "publish/${package#site/}"
+              if ! cmp -s "$package" "publish/${package#site/}"; then
+                echo "::error file=miniapp-manifest.json::${package#site/} 已发布且内容不同。请同步升级 miniapp-manifest.json、package.json 和 package-lock.json 的版本后重新发布；不能覆盖旧版本包。"
+                exit 1
+              fi
             fi
           done
           cp -R site/. publish/

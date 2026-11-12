@@ -3,7 +3,7 @@
   "id": "workbench-sdk-playground",
   "name": "Workbench SDK 能力演示台",
   "description": "面向开发者的官方示例：选择供应商与模型进行对话，体验联网搜索、独立数据、文件读写、主题与通知，并查看每次 SDK 调用的参数、返回值和权限边界。",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "entry": "index.html",
   "icon": "icon.svg",
   "requiredCapabilities": [

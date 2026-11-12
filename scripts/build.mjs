@@ -13,7 +13,7 @@ await cp(join(root, 'src'), dist, { recursive: true })
 await cp(join(root, 'miniapp-manifest.json'), join(dist, 'miniapp-manifest.json'))
 const sdkRoot = dirname(dirname(fileURLToPath(import.meta.resolve('@mira/app-sdk'))))
 const sdkPackage = JSON.parse(await readFile(join(sdkRoot, 'package.json'), 'utf8'))
-if (sdkPackage.version !== '0.3.0') throw new Error('示例要求 SDK 0.3.0')
+if (sdkPackage.version !== '0.4.0') throw new Error('示例要求 SDK 0.4.0')
 await cp(join(sdkRoot, 'dist/index.js'), join(dist, 'vendor/mira-app-sdk.js'))
 await cp(join(sdkRoot, 'LICENSE'), join(dist, 'vendor/LICENSE'))
 const files = {}

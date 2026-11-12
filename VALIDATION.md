@@ -37,10 +37,17 @@ SHA-256：`49049c3ae1016b60974b30e9f97d152a82fc05134fa5acb1acd0749d4efe0273`。
 
 ## 简介与安装确认面板：本地开发验证
 
-以上为已发布 0.1.1 的历史记录。当前源码已补充 `description` 简介，尚未发布；本地重建包只用于隔离测试，不覆盖线上 0.1.1。正式发布时使用新的小程序版本，SDK 版本无需变更。
+以上为已发布 0.1.1 的历史记录。当前源码已补充 `description` 简介；本次准备发布 0.1.2，不覆盖线上 0.1.1，SDK 升级为已发布的 0.4.0。
 
 - Workbench 构建及 32 项单元测试通过，覆盖可选简介、旧清单兼容、无效文本拒绝、取消不写入、注册表重读和在线/包内简介一致性。
 - 当前 `npm test` 通过真实 Electron / SDK 安装与授权流程及全部 28 个示例；新增校验本地来源、简介、ID、图标、权限条目、底层添加窗口隐藏、取消后焦点恢复和 Tab 焦点循环。
-- 检查浅色、深色及 1024 × 680 视图下的长名称、500 字符简介和图标失败回退；确认内容可滚动、操作区留在视口内且无横向溢出。
-- 当前 macOS 原生视图截图不可用，截图改为把真实视图的 DOM 与样式交给 Electron 离屏渲染。截图用于布局检查，SDK 与焦点断言仍执行于真实隔离视图。见 `verification/install-url-review.png`、`verification/install-review-dark.png`、`verification/install-review-compact.png`。
+- 检查浅色、深色及 1024 × 680 视图下的长名称、500 字符简介和图标失败回退；确认仅权限列表滚动，应用信息和底部按钮保持原位；简介两行省略，鼠标悬停或键盘聚焦时浮层展示全文，移出或失焦后关闭，且不撑开面板。
+- 当前 macOS 原生视图截图不可用，截图改为把真实视图的 DOM 与样式交给 Electron 离屏渲染。截图用于布局检查，SDK 与焦点断言仍执行于真实隔离视图。见 `verification/install-url-review.png`、`verification/install-review-dark.png`、`verification/install-review-compact.png`、`verification/install-description-hover.png` 与 `verification/install-permissions-scrolled.png`。
 - 分发响应、模型、搜索、通知与目录选择使用测试夹具；本次未重新验证线上部署、真实模型或操作系统通知。
+
+## 0.1.2 发布修复
+
+- 0.1.1 已公开发布。新增简介后继续使用相同版本改变了包字节，工作流在 `Preserve published version packages` 拒绝覆盖，未部署变更。
+- 本次同步清单、项目、锁文件、页面及下载文档版本为 0.1.2；保留不可变包保护，错误信息明确提示升级版本。
+- 本地包：`release/workbench-sdk-playground-0.1.2.miniapp`，21,194 字节，SHA-256：`f05d699ec19d8fb12bcfc53e23f60c4c8ca9e66e8e54143132469477907526c7`。
+- SDK 更新为 GitHub `v0.4.0`，锁定提交 `aca119cd38556ba9385ade54bab2e36d3ec85289`，构建校验、页面和开发文档同步更新。

@@ -10,8 +10,8 @@
 
 | 项目 | 要求 |
 | --- | --- |
-| 示例版本 | 0.1.1 |
-| SDK | Mira-App-SDK 0.3.0 |
+| 示例版本 | 0.1.2 |
+| SDK | Mira-App-SDK 0.4.0 |
 | Mira 宿主 | 支持 Mira API 1.3 |
 | Workbench | 支持小程序 API 1.2 |
 | AI 示例 | 在 Mira 中配置并启用聊天供应商与模型；自主联网对话需要支持工具调用的模型 |
@@ -26,18 +26,18 @@
 https://miraworkspace.github.io/workbench-sdk-playground/manifest.json
 ```
 
-需要支持网址安装的 Workbench（SDK 0.4.0）与 Mira API 1.4。安装器会检查来源、大小、SHA-256 和包内声明，随后展示申请的权限；确认后安装。示例自身的 SDK 0.3.0 和小程序 API 1.2 保持兼容。
+需要支持网址安装的 Workbench（SDK 0.4.0）与 Mira API 1.4。安装器会检查来源、大小、SHA-256 和包内声明，随后展示申请的权限；确认后安装。示例也使用 SDK 0.4.0，调用范围仍为 Workbench 小程序 API 1.2；网址下载接口仅供 Workbench 安装器使用。
 
-请粘贴上面的 JSON 地址，不要粘贴 GitHub 仓库网页或 Release 附件链接。清单和安装包由同一 GitHub Pages 站点直接返回。已经安装 0.1.0 的用户可以用此地址手动更新到 0.1.1，数据保持独立存储。
+请粘贴上面的 JSON 地址，不要粘贴 GitHub 仓库网页或 Release 附件链接。清单和安装包由同一 GitHub Pages 站点直接返回。已经安装 0.1.0 或 0.1.1 的用户可以用此地址手动更新到 0.1.2，数据保持独立存储。
 
 ## 本地安装
 
-从 [官方发布站点下载 0.1.1 安装包](https://miraworkspace.github.io/workbench-sdk-playground/releases/0.1.1/workbench-sdk-playground-0.1.1.miniapp)，SHA-256 和字节数见 [在线发布清单](https://miraworkspace.github.io/workbench-sdk-playground/manifest.json) 的 `package` 字段；也可按下文从源码构建。旧版本下载保留在 [GitHub Releases](https://github.com/MiraWorkspace/workbench-sdk-playground/releases)。
+从 [官方发布站点下载 0.1.2 安装包](https://miraworkspace.github.io/workbench-sdk-playground/releases/0.1.2/workbench-sdk-playground-0.1.2.miniapp)，SHA-256 和字节数见 [在线发布清单](https://miraworkspace.github.io/workbench-sdk-playground/manifest.json) 的 `package` 字段；也可按下文从源码构建。旧版本下载保留在 [GitHub Releases](https://github.com/MiraWorkspace/workbench-sdk-playground/releases)。
 
 本地构建产物位于：
 
 ```text
-release/workbench-sdk-playground-0.1.1.miniapp
+release/workbench-sdk-playground-0.1.2.miniapp
 ```
 
 1. 打开 Mira 中的 Workbench，点击“添加 → 小程序 → 选择文件”。
@@ -92,7 +92,7 @@ release/workbench-sdk-playground-0.1.1.miniapp
 
 AI 调用按“获取供应商 → 获取模型 → 选择模型 → 生成或对话”进行。多轮对话由小程序保存并提交完整消息历史；启用自主联网时，在 `sdk.models.chat()` 参数中设置 `webSearch: true`，由 AI 决定是否搜索与读取网页。独立的 `sdk.web.search()` 可直接返回搜索结果，无需调用模型。两种方式均不要求用户选择搜索引擎。
 
-完整的能力契约与参数说明见 [Mira-App-SDK 文档](https://github.com/MiraWorkspace/Mira-App-SDK/tree/v0.3.0)；小程序调用范围以 Workbench 实际开放的接口为准。
+完整的能力契约与参数说明见 [Mira-App-SDK 文档](https://github.com/MiraWorkspace/Mira-App-SDK/tree/v0.4.0)；小程序调用范围以 Workbench 实际开放的接口为准。
 
 ## 推荐验收顺序
 
@@ -126,7 +126,7 @@ npm ci
 npm run build
 ```
 
-依赖固定到 GitHub `v0.3.0` 标签，锁文件固定对应提交。构建从已安装的 SDK 复制 JavaScript 与 MIT 许可证到 `dist/vendor/`；无需手工维护 SDK 副本。`dist/` 是可运行静态文件，`release/` 是安装包和 SHA-256 校验文件；源码、验证脚本和测试截图不进入安装包。
+依赖固定到 GitHub `v0.4.0` 标签，锁文件固定对应提交。构建从已安装的 SDK 复制 JavaScript 与 MIT 许可证到 `dist/vendor/`；无需手工维护 SDK 副本。`dist/` 是可运行静态文件，`release/` 是安装包和 SHA-256 校验文件；源码、验证脚本和测试截图不进入安装包。
 
 包内 ID 为 `workbench-sdk-playground`。当前 Workbench 不接受同版本覆盖，重复验证同一版本时可卸载后重新安装；按宿主规则卸载会保留小程序业务数据。发布更新时需同步修改 `package.json` 与 `miniapp-manifest.json` 中的版本号，并重新构建安装包。
 

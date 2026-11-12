@@ -1,6 +1,6 @@
 {
   "name": "workbench-sdk-playground",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Developer examples for SDK capabilities available to Workbench miniapps",
@@ -10,7 +10,7 @@
     "test": "node scripts/verify.mjs"
   },
   "dependencies": {
-    "@mira/app-sdk": "github:MiraWorkspace/Mira-App-SDK#v0.3.0"
+    "@mira/app-sdk": "github:MiraWorkspace/Mira-App-SDK#v0.4.0"
   },
   "devDependencies": {
     "fflate": "0.8.3"
