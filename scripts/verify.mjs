@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { unzipSync } from 'fflate'
+import { unzipSync, zipSync } from 'fflate'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const harness = resolve(process.env.MIRA_HARNESS_DIR || resolve(root, '../Mira-Harness'))
@@ -22,10 +22,13 @@ try {
   const archiveFiles = unzipSync(new Uint8Array(await readFile(archive)))
   assert.equal(JSON.parse(new TextDecoder().decode(archiveFiles['miniapp-manifest.json'])).id, manifest.id)
   assert(!Object.keys(archiveFiles).some(name => /node_modules|scripts\/|verification\/|README/.test(name)))
+  const longArchive = join(temp, 'long-description.miniapp')
+  const longManifest = { ...manifest, name:'VeryLongMiniappName'.repeat(4), description:'说明小程序的用途与权限。'.repeat(45).slice(0,500) }
+  await writeFile(longArchive, zipSync({ ...archiveFiles, 'miniapp-manifest.json':new TextEncoder().encode(JSON.stringify(longManifest)) }))
   await promisify(execFile)(process.execPath, [resolve(workbench, 'node_modules/vite/bin/vite.js'), 'build', '--outDir', join(temp, 'workbench')], { cwd: workbench, timeout: 30000 })
   await build({ stdin: { contents: entry, resolveDir: harness, loader: 'ts' }, outfile: join(temp, 'platform.cjs'), bundle: true, platform: 'node', format: 'cjs', external: ['electron'], plugins: [{ name: 'sqlite', setup: builder => builder.onResolve({ filter: /^better-sqlite3$/ }, () => ({ path: require.resolve('better-sqlite3'), external: true })) }] })
   await writeFile(join(temp, 'main.cjs'), main)
-  const env = { ...process.env, NODE_PATH: join(harness, 'node_modules'), WORKBENCH_DIST: join(temp, 'workbench'), APP_PRELOAD: join(harness, 'electron/preload/appHost.cjs'), MINIAPP_ARCHIVE: archive, MINIAPP_DISTRIBUTION: join(root, 'site/manifest.json'), ARTIFACTS: join(root, 'verification') }
+  const env = { ...process.env, NODE_PATH: join(harness, 'node_modules'), WORKBENCH_DIST: join(temp, 'workbench'), APP_PRELOAD: join(harness, 'electron/preload/appHost.cjs'), MINIAPP_ARCHIVE: archive, MINIAPP_LONG_ARCHIVE: longArchive, MINIAPP_DISTRIBUTION: join(root, 'site/manifest.json'), ARTIFACTS: join(root, 'verification') }
   delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS
   await mkdir(env.ARTIFACTS, { recursive: true })
   const { stdout, stderr } = await promisify(execFile)(require('electron'), [join(temp, 'main.cjs')], { env, timeout: 120000, maxBuffer: 2 * 1024 * 1024 })
@@ -113,6 +116,26 @@ app.whenReady().then(async () => {
   const id = views.open(owner, 'mira-workbench'); views.setBounds(owner, id, { x: 0, y: 0, width: 1280, height: 920 })
   const parent = webContents.fromId(id); parent.setBackgroundThrottling(false); owner.show()
   parent.on('console-message', (_event, _level, message) => console.log('WORKBENCH: ' + message))
+  // Render the actual DOM and styles offscreen: native WebContentsView capture can
+  // be unavailable on macOS. This checks layout, while SDK assertions use the live view.
+  const capture = async target => {
+   const snapshot = () => {
+    const html = document.documentElement.cloneNode(true), style = document.createElement('style')
+    style.textContent = [...document.styleSheets].map(s => [...s.cssRules].map(r => r.cssText).join('\n')).join('\n')
+    html.querySelector('head').replaceChildren(style)
+    const scrollers = [...document.querySelectorAll('.review-permission-content, .review-description-full')]
+    html.querySelectorAll('.review-permission-content, .review-description-full').forEach((node, i) => node.setAttribute('data-snapshot-scroll', scrollers[i].scrollTop))
+    return { html:'<!doctype html>' + html.outerHTML, width:innerWidth, height:innerHeight }
+   }
+   const { html, width, height } = await target.executeJavaScript('(' + snapshot.toString() + ')()')
+   const image = new BrowserWindow({ show:false, width, height, useContentSize:true, webPreferences:{ offscreen:true, contextIsolation:true, nodeIntegration:false, sandbox:true } })
+   try {
+    await image.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+    await image.webContents.executeJavaScript('[...document.querySelectorAll("[data-snapshot-scroll]")].forEach(node => node.scrollTop = Number(node.dataset.snapshotScroll))')
+    await new Promise(resolve => setTimeout(resolve, 250))
+    return (await image.webContents.capturePage()).toPNG()
+   } finally { image.destroy() }
+  }
   const inspect = code => parent.executeJavaScript(code, true)
   const wait = async (fn, label) => { const deadline = Date.now() + 12000; while (Date.now() < deadline) { if (await fn()) return; await new Promise(resolve => setTimeout(resolve, 20)) } throw Error('timeout: ' + label) }
   const click = (selector, target = parent) => target.executeJavaScript('document.querySelector(' + JSON.stringify(selector) + ').click()', true)
@@ -120,11 +143,50 @@ app.whenReady().then(async () => {
   await wait(() => fs.existsSync(path.join(dataRoot, 'files/mira-workbench/miniapps/registry.json')), 'manager initialized')
   await click('[aria-label="添加"]'); await click('#add-miniapp-tab')
   await wait(() => inspect('document.querySelector(".miniapp-upload button")?.disabled === false'), 'install enabled')
-  const bytes = fs.readFileSync(process.env.MINIAPP_ARCHIVE).toString('base64')
+  const bytes = fs.readFileSync(process.env.MINIAPP_LONG_ARCHIVE).toString('base64')
   await inspect('(() => { const data = Uint8Array.from(atob(' + JSON.stringify(bytes) + '), c => c.charCodeAt(0)); const transfer = new DataTransfer(); transfer.items.add(new File([data], "playground.miniapp")); const input = document.querySelector("[aria-label=选择小程序安装包]"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles:true })); })()')
   await wait(() => inspect('!!document.querySelector(".review-dialog")'), 'install review')
+  views.setBounds(owner, id, { x:0, y:0, width:1024, height:680 })
+  await inspect('document.querySelector(".review-app-icon img").dispatchEvent(new Event("error"))')
+  await wait(() => inspect('!!document.querySelector(".review-app-icon svg")'), 'icon fallback')
+  const layout = () => inspect('(() => { const panel=document.querySelector(".review-dialog"), body=document.querySelector(".review-body"), list=document.querySelector(".review-permission-content"), description=document.querySelector(".review-description"), footer=document.querySelector(".review-actions").getBoundingClientRect(); return { panelScrollable:panel.scrollHeight > panel.clientHeight, bodyScrollable:body.scrollHeight > body.clientHeight, listScrollable:list.scrollHeight > list.clientHeight, descriptionHeight:description.clientHeight, lineHeight:parseFloat(getComputedStyle(description).lineHeight), descriptionTop:description.getBoundingClientRect().top, footerTop:footer.top, footerBottom:footer.bottom, viewport:innerHeight }; })()')
+  await new Promise(resolve => setTimeout(resolve, 250))
+  const beforeScroll = await layout()
+  assert.equal(beforeScroll.panelScrollable, false); assert.equal(beforeScroll.bodyScrollable, false); assert.equal(beforeScroll.listScrollable, true)
+  assert(beforeScroll.descriptionHeight <= beforeScroll.lineHeight * 2 + 1)
+  assert(beforeScroll.footerBottom <= beforeScroll.viewport)
+  await new Promise(resolve => setTimeout(resolve, 250))
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-review-compact.png'), await capture(parent))
+  const descriptionPoint = await inspect('(() => { const r=document.querySelector(".review-description").getBoundingClientRect(); return { x:Math.round(r.x + r.width / 2), y:Math.round(r.y + r.height / 2) }; })()')
+  parent.sendInputEvent({ type:'mouseMove', ...descriptionPoint })
+  await wait(() => inspect('!!document.querySelector(".review-description-full")'), 'description hover opens full text')
+  assert.equal(await inspect('document.querySelector(".review-description-full").textContent'), '说明小程序的用途与权限。'.repeat(45).slice(0,500))
+  assert.equal((await layout()).descriptionHeight, beforeScroll.descriptionHeight)
+  theme = 'dark'; views.themeChanged(theme)
+  await wait(() => inspect('document.documentElement.dataset.theme === "dark"'), 'tooltip dark theme')
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-description-hover.png'), await capture(parent))
+  const tooltipPoint = await inspect('(() => { const r=document.querySelector(".review-description-full").getBoundingClientRect(); return { x:Math.round(r.x + 20), y:Math.round(r.y + 20) }; })()')
+  parent.sendInputEvent({ type:'mouseMove', ...tooltipPoint })
+  assert.equal(await inspect('!!document.querySelector(".review-description-full")'), true)
+  parent.sendInputEvent({ type:'mouseMove', x:20, y:20 })
+  await wait(() => inspect('!document.querySelector(".review-description-full")'), 'description mouse leave closes full text')
+  await inspect('document.querySelector(".review-description").focus()')
+  await wait(() => inspect('!!document.querySelector(".review-description-full")'), 'description keyboard focus')
+  await inspect('document.querySelector(".review-permission-content").focus()')
+  await wait(() => inspect('!document.querySelector(".review-description-full")'), 'description blur closes full text')
+  parent.sendInputEvent({ type:'keyDown', keyCode:'End' }); parent.sendInputEvent({ type:'keyUp', keyCode:'End' })
+  await wait(() => inspect('document.querySelector(".review-permission-content").scrollTop > 0'), 'keyboard scrolls permissions')
+  const afterScroll = await layout()
+  assert.equal(afterScroll.descriptionTop, beforeScroll.descriptionTop); assert.equal(afterScroll.footerTop, beforeScroll.footerTop)
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-permissions-scrolled.png'), await capture(parent))
+  await inspect('document.querySelector(".review-actions .add-button").focus()')
+  parent.sendInputEvent({ type:'keyDown', keyCode:'Tab' }); parent.sendInputEvent({ type:'keyUp', keyCode:'Tab' })
+  await wait(() => inspect('document.activeElement?.getAttribute("aria-label") === "关闭权限确认"'), 'review focus trap')
+  views.setBounds(owner, id, { x:0, y:0, width:1280, height:920 })
+  theme = 'light'; views.themeChanged(theme)
   // The local upload path still reaches real package review; cancel before online installation.
-  await click('.review-dialog .cancel-button')
+  assert.equal(await inspect('document.querySelector(".review-source").textContent.includes("本地安装包")'), true)
+  await click('.review-dialog [aria-label="关闭权限确认"]')
   await wait(() => inspect('!document.querySelector(".review-dialog") && !document.querySelector(".miniapp-upload button").disabled'), 'cancel local install')
   assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'files/mira-workbench/miniapps/registry.json'), 'utf8')).items.length, 0)
   const submitUrl = async () => {
@@ -135,15 +197,31 @@ app.whenReady().then(async () => {
    await submitUrl()
    await wait(() => inspect('document.querySelector(".form-error")?.textContent.includes("SHA-256")'), 'tamper rejected')
    await new Promise(resolve => setTimeout(resolve, 250))
-   await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-error.png'), (await parent.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
+   await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-error.png'), await capture(parent))
    assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'files/mira-workbench/miniapps/registry.json'), 'utf8')).items.length, 0)
    tamperPackage = false
   }
   await submitUrl()
   await wait(() => inspect('!!document.querySelector(".review-dialog")'), 'online review')
   assert.equal(await inspect('document.querySelector(".review-source").textContent.includes(' + JSON.stringify(installationUrl) + ')'), true)
-  await new Promise(resolve => setTimeout(resolve, 250))
-  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-review.png'), (await parent.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
+  assert.equal(await inspect('document.querySelector(".review-description").textContent'), distribution.description)
+  assert.equal(await inspect('document.querySelector(".review-app-id").textContent'), distribution.id)
+  assert.equal(await inspect('document.querySelector(".review-app-icon img").complete'), true)
+  assert.equal(await inspect('document.querySelectorAll(".review-permission-group li").length'), distribution.requiredCapabilities.length)
+  await wait(() => inspect('getComputedStyle(document.querySelector("#add-miniapp-panel").closest(".dialog-backdrop")).display === "none"'), 'add dialog hidden after transition')
+  const reviewCapture = async name => {
+   await new Promise(resolve => setTimeout(resolve, 250))
+   const geometry = await inspect('(() => { const panel = document.querySelector(".review-dialog"), body = document.querySelector(".review-body"), footer = document.querySelector(".review-actions").getBoundingClientRect(), r = panel.getBoundingClientRect(); return { viewport:innerHeight, bottom:r.bottom, top:r.top, width:panel.clientWidth, scrollWidth:panel.scrollWidth, footerBottom:footer.bottom, bodyScrollable:body.scrollHeight > body.clientHeight }; })()')
+   assert(geometry.top >= 0 && geometry.bottom <= geometry.viewport && geometry.footerBottom <= geometry.viewport)
+   assert.equal(geometry.width, geometry.scrollWidth)
+   await fs.promises.writeFile(path.join(process.env.ARTIFACTS, name), await capture(parent))
+   return geometry
+  }
+  await reviewCapture('install-url-review.png')
+  theme = 'dark'; views.themeChanged(theme)
+  await wait(() => inspect('document.documentElement.dataset.theme === "dark"'), 'review dark theme')
+  await reviewCapture('install-review-dark.png')
+  theme = 'light'; views.themeChanged(theme)
   await click('.review-dialog .cancel-button')
   await wait(() => inspect('!document.querySelector(".review-dialog") && document.activeElement === document.querySelector(".miniapp-url input")'), 'cancel and focus URL')
   await submitUrl()
@@ -220,9 +298,9 @@ app.whenReady().then(async () => {
   // The later SDK response acts as a barrier after the event on the same channel.
   await run('context.get'); assert.equal(await check('document.querySelector("#events").textContent'), eventLog)
   await run('appearance.get')
-  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'light.png'), (await child.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'light.png'), await capture(child))
   theme = 'dark'; await run('appearance.get')
-  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'dark.png'), (await child.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'dark.png'), await capture(child))
   await run('models.chat'); await setParams({ invalid: undefined })
   await check('document.querySelector("#params").value = "{"; document.querySelector("#params").dispatchEvent(new Event("input"))')
   assert.equal(await check('document.querySelector("#run").disabled'), true)
