@@ -1,0 +1,58 @@
+name: Publish miniapp
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+      - run: npm ci
+      - run: npm run build
+      - name: Preserve published version packages
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git worktree add publish origin/gh-pages
+          else
+            git worktree add --orphan -b gh-pages publish
+          fi
+          # Never replace bytes of an existing version, even on a rerun.
+          for package in site/releases/*/*.miniapp; do
+            if [ -f "publish/${package#site/}" ]; then
+              cmp "$package" "publish/${package#site/}"
+            fi
+          done
+          cp -R site/. publish/
+          cd publish
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish miniapp ${GITHUB_SHA}"
+            git push origin HEAD:gh-pages
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish
+      - uses: actions/deploy-pages@v4
+        id: deployment

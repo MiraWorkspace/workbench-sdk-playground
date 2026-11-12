@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "workbench-sdk-playground",
   "name": "Workbench SDK 能力演示台",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "entry": "index.html",
   "icon": "icon.svg",
   "requiredCapabilities": [
@@ -13,5 +13,8 @@
     "files:read",
     "files:write",
     "notifications:send"
-  ]
+  ],
+  "update": {
+    "url": "https://miraworkspace.github.io/workbench-sdk-playground/manifest.json"
+  }
 }

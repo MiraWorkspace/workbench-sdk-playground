@@ -21,7 +21,7 @@ async function collect(directory, prefix = '') {
   for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
     const name = prefix + entry.name, path = join(directory, entry.name)
     if (entry.isDirectory()) await collect(path, name + '/')
-    else files[name] = new Uint8Array(await readFile(path))
+    else files[name] = [new Uint8Array(await readFile(path)), { mtime: new Date(2020, 0, 1) }]
   }
 }
 await collect(dist)
@@ -31,3 +31,12 @@ await writeFile(join(root, 'release', name), bytes)
 const sha256 = createHash('sha256').update(bytes).digest('hex')
 await writeFile(join(root, 'release', `${name}.sha256`), `${sha256}  ${name}\n`)
 console.log(`${join(root, 'release', name)}\n${bytes.length} bytes · ${Object.keys(files).length} files\nSHA-256 ${sha256}`)
+
+// Pages serves the manifest and immutable versioned package without redirects.
+const site = join(root, 'site'), packagePath = `releases/${manifest.version}/${name}`
+if (!manifest.update?.url) throw new Error('发布必须配置 update.url')
+await rm(site, { recursive: true, force: true })
+await mkdir(join(site, 'releases', manifest.version), { recursive: true })
+await writeFile(join(site, packagePath), bytes)
+await writeFile(join(site, 'manifest.json'), JSON.stringify({ ...manifest, package: { url: new URL(packagePath, manifest.update.url).href, sha256, size: bytes.length } }, null, 2) + '\n')
+await writeFile(join(site, '.nojekyll'), '')

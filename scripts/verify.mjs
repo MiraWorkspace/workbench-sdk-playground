@@ -25,10 +25,10 @@ try {
   await promisify(execFile)(process.execPath, [resolve(workbench, 'node_modules/vite/bin/vite.js'), 'build', '--outDir', join(temp, 'workbench')], { cwd: workbench, timeout: 30000 })
   await build({ stdin: { contents: entry, resolveDir: harness, loader: 'ts' }, outfile: join(temp, 'platform.cjs'), bundle: true, platform: 'node', format: 'cjs', external: ['electron'], plugins: [{ name: 'sqlite', setup: builder => builder.onResolve({ filter: /^better-sqlite3$/ }, () => ({ path: require.resolve('better-sqlite3'), external: true })) }] })
   await writeFile(join(temp, 'main.cjs'), main)
-  const env = { ...process.env, NODE_PATH: join(harness, 'node_modules'), WORKBENCH_DIST: join(temp, 'workbench'), APP_PRELOAD: join(harness, 'electron/preload/appHost.cjs'), MINIAPP_ARCHIVE: archive, ARTIFACTS: join(root, 'verification') }
+  const env = { ...process.env, NODE_PATH: join(harness, 'node_modules'), WORKBENCH_DIST: join(temp, 'workbench'), APP_PRELOAD: join(harness, 'electron/preload/appHost.cjs'), MINIAPP_ARCHIVE: archive, MINIAPP_DISTRIBUTION: join(root, 'site/manifest.json'), ARTIFACTS: join(root, 'verification') }
   delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS
   await mkdir(env.ARTIFACTS, { recursive: true })
-  const { stdout, stderr } = await promisify(execFile)(require('electron'), [join(temp, 'main.cjs')], { env, timeout: 60000, maxBuffer: 2 * 1024 * 1024 })
+  const { stdout, stderr } = await promisify(execFile)(require('electron'), [join(temp, 'main.cjs')], { env, timeout: 120000, maxBuffer: 2 * 1024 * 1024 })
   if (!stdout.includes('PLAYGROUND_PASS')) throw new Error(stdout + stderr)
   console.log(stdout.trim())
 } finally { await rm(temp, { recursive: true, force: true }) }
@@ -44,12 +44,14 @@ export { LocalMicroAppServer } from './electron/adapters/localMicroAppServer'
 export { MiraApps } from './electron/services/miraApps'
 export { MiraPaths } from './electron/storage/miraPaths'
 export { AppFiles } from './electron/services/appFiles'
+export { fetchWorkbenchMiniappResource } from './electron/services/workbenchMiniappResource'
+export { electronWebRequest } from './electron/adapters/electronWebRequest'
 `
 
 const main = String.raw`
-const { app, ipcMain, webContents, BrowserWindow } = require('electron')
+const { app, ipcMain, webContents, BrowserWindow, session } = require('electron')
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path')
-const { AppRuntime, AppSdkDispatcher, AppViewManager, AppWebService, createMiraMainWindow, LocalMicroAppServer, MiraApps, MiraPaths, AppFiles } = require('./platform.cjs')
+const { AppRuntime, AppSdkDispatcher, AppViewManager, AppWebService, createMiraMainWindow, LocalMicroAppServer, MiraApps, MiraPaths, AppFiles, fetchWorkbenchMiniappResource, electronWebRequest } = require('./platform.cjs')
 console.log('VERIFY_BOOT')
 app.setPath('userData', path.join(__dirname, 'profile'))
 app.whenReady().then(async () => {
@@ -65,10 +67,23 @@ app.whenReady().then(async () => {
   runtime = new AppRuntime(dataRoot, { get: id => approvals.get(id), set: (id, value) => approvals.set(id, value), delete: id => approvals.delete(id) }, id => apps.resolvePlatformApp(id))
   const files = new AppFiles(dataRoot), selectedDirectory = path.join(__dirname, 'selected')
   fs.mkdirSync(selectedDirectory)
-  let theme = 'light', notifications = 0, failChat = false
+  let theme = 'light', notifications = 0, failChat = false, tamperPackage = true
+  const live = process.env.MINIAPP_LIVE === '1'
+  if (live && process.env.MINIAPP_PROXY) await session.defaultSession.setProxy({ proxyRules: process.env.MINIAPP_PROXY })
+  const distribution = JSON.parse(fs.readFileSync(process.env.MINIAPP_DISTRIBUTION, 'utf8'))
+  const installationUrl = distribution.update.url
+  const download = async (url, options) => {
+   assert.equal(options.redirect, 'manual')
+   if (url === installationUrl) return new Response(JSON.stringify(distribution))
+   assert.equal(url, distribution.package.url)
+   const data = new Uint8Array(fs.readFileSync(process.env.MINIAPP_ARCHIVE))
+   if (tamperPackage) data[data.length - 1] ^= 1
+   return new Response(data)
+  }
   const calls = [], searches = []
   const web = new AppWebService(async url => { searches.push(url); return new Response('<li class="b_algo"><h2><a href="https://www.typescriptlang.org/">TypeScript 官方文档</a></h2><p>Official TypeScript docs</p></li>') })
   const dispatcher = new AppSdkDispatcher(runtime, {
+   workbenchMiniappResource: (url, kind) => fetchWorkbenchMiniappResource(url, kind, live ? electronWebRequest : download),
    getTheme: () => theme, notify: async () => { notifications++ }, readLegacyWorkbenchSites: async () => null,
    generate: async input => { calls.push(input); return { text: 'SDK 是调用宿主能力的客户端。' } },
    listProviders: () => [{ id: 'p', name: 'Fixture Provider' }],
@@ -108,8 +123,34 @@ app.whenReady().then(async () => {
   const bytes = fs.readFileSync(process.env.MINIAPP_ARCHIVE).toString('base64')
   await inspect('(() => { const data = Uint8Array.from(atob(' + JSON.stringify(bytes) + '), c => c.charCodeAt(0)); const transfer = new DataTransfer(); transfer.items.add(new File([data], "playground.miniapp")); const input = document.querySelector("[aria-label=选择小程序安装包]"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles:true })); })()')
   await wait(() => inspect('!!document.querySelector(".review-dialog")'), 'install review')
+  // The local upload path still reaches real package review; cancel before online installation.
+  await click('.review-dialog .cancel-button')
+  await wait(() => inspect('!document.querySelector(".review-dialog") && !document.querySelector(".miniapp-upload button").disabled'), 'cancel local install')
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'files/mira-workbench/miniapps/registry.json'), 'utf8')).items.length, 0)
+  const submitUrl = async () => {
+   await inspect('(() => { const field = document.querySelector(".miniapp-url input"); field.value = ' + JSON.stringify(installationUrl) + '; field.dispatchEvent(new Event("input", { bubbles:true })); })()')
+   await click('#add-miniapp-panel .add-button')
+  }
+  if (!live) {
+   await submitUrl()
+   await wait(() => inspect('document.querySelector(".form-error")?.textContent.includes("SHA-256")'), 'tamper rejected')
+   await new Promise(resolve => setTimeout(resolve, 250))
+   await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-error.png'), (await parent.capturePage()).toPNG())
+   assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'files/mira-workbench/miniapps/registry.json'), 'utf8')).items.length, 0)
+   tamperPackage = false
+  }
+  await submitUrl()
+  await wait(() => inspect('!!document.querySelector(".review-dialog")'), 'online review')
+  assert.equal(await inspect('document.querySelector(".review-source").textContent.includes(' + JSON.stringify(installationUrl) + ')'), true)
+  await new Promise(resolve => setTimeout(resolve, 250))
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-review.png'), (await parent.capturePage()).toPNG())
+  await click('.review-dialog .cancel-button')
+  await wait(() => inspect('!document.querySelector(".review-dialog") && document.activeElement === document.querySelector(".miniapp-url input")'), 'cancel and focus URL')
+  await submitUrl()
+  await wait(() => inspect('!!document.querySelector(".review-dialog")'), 'review retry')
   await click('.review-dialog .add-button')
   await wait(() => inspect('[...document.querySelectorAll(".site-card")].some(e => e.textContent.includes("SDK 能力演示台"))'), 'installed card')
+  console.log(live ? 'LIVE_HTTPS_INSTALL_PASS ' + installationUrl : 'FIXTURE_URL_INSTALL_PASS: tamper, source review, cancel, retry, install')
   // Authorize an isolated fixture directory through Workbench's real permission UI.
   const openPermissions = async () => {
    await click('[aria-label="设置"]')

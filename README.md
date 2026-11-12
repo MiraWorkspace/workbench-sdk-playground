@@ -8,13 +8,25 @@
 
 | 项目 | 要求 |
 | --- | --- |
-| 示例版本 | 0.1.0 |
+| 示例版本 | 0.1.1 |
 | SDK | Mira-App-SDK 0.3.0 |
 | Mira 宿主 | 支持 Mira API 1.3 |
 | Workbench | 支持小程序 API 1.2 |
 | AI 示例 | 在 Mira 中配置并启用聊天供应商与模型；自主联网对话需要支持工具调用的模型 |
 
 小程序需要安装到 Mira 中的 Workbench 运行。普通浏览器仅用于阅读界面和代码，无法调用宿主能力。
+
+## 从网址安装
+
+在 Workbench 的“添加 → 小程序 → 从网址安装”粘贴：
+
+```text
+https://miraworkspace.github.io/workbench-sdk-playground/manifest.json
+```
+
+需要支持网址安装的 Workbench（SDK 0.4.0）与 Mira API 1.4。安装器会检查来源、大小、SHA-256 和包内声明，随后展示申请的权限；确认后安装。示例自身的 SDK 0.3.0 和小程序 API 1.2 保持兼容。
+
+请粘贴上面的 JSON 地址，不要粘贴 GitHub 仓库网页或 Release 附件链接。清单和安装包由同一 GitHub Pages 站点直接返回。已经安装 0.1.0 的用户可以用此地址手动更新到 0.1.1，数据保持独立存储。
 
 ## 本地安装
 
@@ -23,7 +35,7 @@
 本地构建产物位于：
 
 ```text
-release/workbench-sdk-playground-0.1.0.miniapp
+release/workbench-sdk-playground-0.1.1.miniapp
 ```
 
 1. 打开 Mira 中的 Workbench，点击“添加 → 小程序 → 选择文件”。
@@ -134,6 +146,20 @@ npm test
 
 本地验证结果与验收边界见 [VALIDATION.md](VALIDATION.md)。
 
+## 发布你的小程序
+
+分发方式参考 [Cherry Studio 小程序文档](https://github.com/CherryHQ/cherry-studio-miniapps/blob/main/README.zh-CN.md)：源码、安装包由开发者自己的仓库和静态站点维护，GitHub Topic 用于发现。Workbench 项目统一使用 **`workbench-miniapp`**，仓库 Website 填写安装清单地址。
+
+本仓库提供可复用的发布流程：
+
+1. 在包内 `miniapp-manifest.json` 配置稳定的 HTTPS `update.url`，版本与 `package.json` 一致。已经发布的版本不覆盖；修改后准备发布时再升级版本。
+2. `npm ci && npm run build` 生成本地包以及 `site/manifest.json`、`site/releases/<version>/<id>-<version>.miniapp`。归档使用固定时间戳，同一输入可以重复构建出相同摘要。
+3. 在线清单包含包内全部字段，并附加 `package.url`、`package.sha256`、`package.size`；三项均由最终包自动生成。不要手写摘要或把在线 `package` 字段放回包内清单。
+4. GitHub 仓库 Settings → Pages 选择 GitHub Actions。推送 main 后 `.github/workflows/pages.yml` 构建并部署 `site/`，同时保留此前已发布的版本包；新版本更新稳定的 manifest.json。
+5. 发布后检查清单和包直接返回 HTTP 200、没有重定向，且大小、摘要和包内声明一致。将清单地址提供给用户，在 Workbench 确认权限并安装。
+
+安装规范：清单最多 64 KiB，包最多 64 MiB；两者必须同 HTTPS origin，不含凭证或 URL 片段，不允许重定向。GitHub Releases 可另行提供手动下载，但其附件地址会重定向，不能直接填写为 `package.url`。完整契约见 [Workbench 安装文档](https://github.com/MiraWorkspace/Mira-Workbench/blob/dev/docs/MINIAPP_SDK.md#从网址安装与发布)。当前更新通过用户重新提交清单地址触发，不自动检查更新。
+
 ## 目录
 
 ```text
@@ -145,4 +171,6 @@ scripts/verify.mjs      隔离 Electron 集成检查
 scripts/preview.mjs     普通浏览器阅读预览
 dist/                   构建产物
 release/                .miniapp 与 SHA-256
+site/                   HTTPS 发布清单与版本包
+.github/workflows/      GitHub Pages 发布工作流
 ```
