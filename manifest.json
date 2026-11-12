@@ -2,7 +2,8 @@
   "manifestVersion": 1,
   "id": "workbench-sdk-playground",
   "name": "Workbench SDK 能力演示台",
-  "version": "0.1.1",
+  "description": "面向开发者的官方示例：选择供应商与模型进行对话，体验联网搜索、独立数据、文件读写、主题与通知，并查看每次 SDK 调用的参数、返回值和权限边界。",
+  "version": "0.1.2",
   "entry": "index.html",
   "icon": "icon.svg",
   "requiredCapabilities": [
@@ -18,8 +19,8 @@
     "url": "https://miraworkspace.github.io/workbench-sdk-playground/manifest.json"
   },
   "package": {
-    "url": "https://miraworkspace.github.io/workbench-sdk-playground/releases/0.1.1/workbench-sdk-playground-0.1.1.miniapp",
-    "sha256": "49049c3ae1016b60974b30e9f97d152a82fc05134fa5acb1acd0749d4efe0273",
-    "size": 20949
+    "url": "https://miraworkspace.github.io/workbench-sdk-playground/releases/0.1.2/workbench-sdk-playground-0.1.2.miniapp",
+    "sha256": "f05d699ec19d8fb12bcfc53e23f60c4c8ca9e66e8e54143132469477907526c7",
+    "size": 21194
   }
 }
