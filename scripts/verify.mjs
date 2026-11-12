@@ -135,7 +135,7 @@ app.whenReady().then(async () => {
    await submitUrl()
    await wait(() => inspect('document.querySelector(".form-error")?.textContent.includes("SHA-256")'), 'tamper rejected')
    await new Promise(resolve => setTimeout(resolve, 250))
-   await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-error.png'), (await parent.capturePage()).toPNG())
+   await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-error.png'), (await parent.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
    assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'files/mira-workbench/miniapps/registry.json'), 'utf8')).items.length, 0)
    tamperPackage = false
   }
@@ -143,7 +143,7 @@ app.whenReady().then(async () => {
   await wait(() => inspect('!!document.querySelector(".review-dialog")'), 'online review')
   assert.equal(await inspect('document.querySelector(".review-source").textContent.includes(' + JSON.stringify(installationUrl) + ')'), true)
   await new Promise(resolve => setTimeout(resolve, 250))
-  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-review.png'), (await parent.capturePage()).toPNG())
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'install-url-review.png'), (await parent.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
   await click('.review-dialog .cancel-button')
   await wait(() => inspect('!document.querySelector(".review-dialog") && document.activeElement === document.querySelector(".miniapp-url input")'), 'cancel and focus URL')
   await submitUrl()
@@ -220,9 +220,9 @@ app.whenReady().then(async () => {
   // The later SDK response acts as a barrier after the event on the same channel.
   await run('context.get'); assert.equal(await check('document.querySelector("#events").textContent'), eventLog)
   await run('appearance.get')
-  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'light.png'), (await child.capturePage()).toPNG())
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'light.png'), (await child.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
   theme = 'dark'; await run('appearance.get')
-  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'dark.png'), (await child.capturePage()).toPNG())
+  await fs.promises.writeFile(path.join(process.env.ARTIFACTS, 'dark.png'), (await child.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG())
   await run('models.chat'); await setParams({ invalid: undefined })
   await check('document.querySelector("#params").value = "{"; document.querySelector("#params").dispatchEvent(new Event("input"))')
   assert.equal(await check('document.querySelector("#run").disabled'), true)

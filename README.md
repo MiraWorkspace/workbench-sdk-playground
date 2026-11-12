@@ -30,7 +30,7 @@ https://miraworkspace.github.io/workbench-sdk-playground/manifest.json
 
 ## 本地安装
 
-从 [GitHub Releases](https://github.com/MiraWorkspace/workbench-sdk-playground/releases/latest) 下载 `.miniapp` 安装包及对应的 `.sha256` 校验文件，或按下文从源码构建。
+从 [官方发布站点下载 0.1.1 安装包](https://miraworkspace.github.io/workbench-sdk-playground/releases/0.1.1/workbench-sdk-playground-0.1.1.miniapp)，SHA-256 和字节数见 [在线发布清单](https://miraworkspace.github.io/workbench-sdk-playground/manifest.json) 的 `package` 字段；也可按下文从源码构建。旧版本下载保留在 [GitHub Releases](https://github.com/MiraWorkspace/workbench-sdk-playground/releases)。
 
 本地构建产物位于：
 
@@ -140,7 +140,9 @@ npm test
 
 未设置环境变量时，脚本默认查找本项目同级的 `Mira-Harness` 和 `Mira-Workbench`。这只是集成检查的默认路径，普通开发者构建示例或安装 `.miniapp` 无需准备这两个源码仓库。
 
-检查在临时 Electron profile 中启动测试宿主，从 Workbench 实际安装入口加载 `.miniapp`。检查真实连接、权限、SQLite、文件、目录句柄、主题事件、客户端断连、真实连接释放与重新打开；模型回答、搜索 HTTP、通知发送和原生目录选择使用夹具，不访问外网模型或修改用户数据。测试完成后删除临时 profile。截图写到 `verification/`，不进入安装包。
+检查在临时 Electron profile 中启动测试宿主，从 Workbench 实际安装入口加载 `.miniapp`。检查真实连接、权限、SQLite、文件、目录句柄、主题事件、客户端断连、真实连接释放与重新打开；模型回答、搜索 HTTP、通知发送和原生目录选择使用夹具，默认分发下载也使用夹具，不访问外网模型或修改用户数据。测试完成后删除临时 profile。截图写到 `verification/`，不进入安装包。
+
+发布完成后可用 `MINIAPP_LIVE=1 npm test` 验证真实 HTTPS 安装；需要代理时可设置 `MINIAPP_PROXY=http://127.0.0.1:7897`。仅分发下载切换到真实网络，模型、搜索和通知仍使用夹具。
 
 只阅读界面与源码可运行 `npm run preview`，访问 `http://127.0.0.1:4178`。普通浏览器会明确显示未连接，执行按钮不可用，不注入模拟宿主。
 
