@@ -1,0 +1,25 @@
+{
+  "manifestVersion": 1,
+  "id": "workbench-sdk-playground",
+  "name": "Workbench SDK 能力演示台",
+  "version": "0.1.1",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "requiredCapabilities": [
+    "storage:app",
+    "appearance:read",
+    "models:generate",
+    "web:search",
+    "files:read",
+    "files:write",
+    "notifications:send"
+  ],
+  "update": {
+    "url": "https://miraworkspace.github.io/workbench-sdk-playground/manifest.json"
+  },
+  "package": {
+    "url": "https://miraworkspace.github.io/workbench-sdk-playground/releases/0.1.1/workbench-sdk-playground-0.1.1.miniapp",
+    "sha256": "49049c3ae1016b60974b30e9f97d152a82fc05134fa5acb1acd0749d4efe0273",
+    "size": 20949
+  }
+}
