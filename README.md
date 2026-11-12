@@ -18,6 +18,8 @@
 
 ## 本地安装
 
+从 [GitHub Releases](https://github.com/MiraWorkspace/workbench-sdk-playground/releases/latest) 下载 `.miniapp` 安装包及对应的 `.sha256` 校验文件，或按下文从源码构建。
+
 本地构建产物位于：
 
 ```text
