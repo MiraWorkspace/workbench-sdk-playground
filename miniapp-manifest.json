@@ -1,0 +1,17 @@
+{
+  "manifestVersion": 1,
+  "id": "workbench-sdk-playground",
+  "name": "Workbench SDK 能力演示台",
+  "version": "0.1.0",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "requiredCapabilities": [
+    "storage:app",
+    "appearance:read",
+    "models:generate",
+    "web:search",
+    "files:read",
+    "files:write",
+    "notifications:send"
+  ]
+}

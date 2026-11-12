@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Workbench SDK 能力演示台</title><link rel="stylesheet" href="./style.css"></head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="./icon.svg" width="32" height="32" alt=""><div><strong>SDK 能力演示台</strong><small>Workbench Miniapp · SDK 0.3.0 · 示例 0.1.0</small></div></div>
+    <div class="connection"><span id="connection" role="status">正在连接…</span><button id="reload" type="button" disabled>重新读取上下文</button></div>
+  </header>
+  <p id="connection-detail" class="connection-detail">小程序 → Workbench 权限校验 → Mira 宿主。所有操作均使用实际 SDK。</p>
+  <div class="layout">
+    <nav id="navigation" aria-label="SDK 能力示例"></nav>
+    <main>
+      <div class="heading"><div><span id="group" class="eyebrow"></span><h1 id="title"></h1></div><code id="source"></code></div>
+      <p id="description" class="description"></p>
+      <div id="permissions" class="permissions"></div>
+      <p id="compatibility" class="hint"></p>
+      <p id="check" class="check"></p>
+
+      <section id="model-picker" class="panel" hidden aria-label="供应商与模型选择">
+        <h2>供应商 → 模型 → 调用</h2>
+        <div class="model-controls"><button id="load-providers" type="button">获取供应商</button><label>供应商<select id="provider"><option value="">先获取供应商</option></select></label><button id="load-models" type="button">获取模型</button><label>模型<select id="model"><option value="">先获取模型</option></select></label></div>
+        <p class="hint">获取按钮会切换到对应示例并执行；选择结果会填入模型调用参数。不会自动发起生成。</p>
+      </section>
+
+      <div class="request-grid">
+      <section class="panel">
+        <div class="section-heading"><h2>1. 示例参数 <small>可编辑 JSON</small></h2><button id="reset" type="button">恢复示例参数</button></div>
+        <label class="sr-only" for="params">示例参数 JSON</label><textarea id="params" rows="9" spellcheck="false"></textarea>
+        <p id="param-error" class="error" role="status"></p>
+      </section>
+      <section class="panel">
+        <div class="section-heading"><h2>2. 调用代码 <small>与执行逻辑一致</small></h2><button id="copy-code" type="button">复制代码</button></div>
+        <p class="hint">完整实现见上方源码路径。示例接收同一个 sdk 连接；没有动态执行编辑的代码。</p>
+        <pre><code id="code"></code></pre><label id="confirm-label" class="confirm" hidden><input id="confirm" type="checkbox"><span id="confirm-text"></span></label>
+        <div class="actions"><button id="run" class="primary" type="button" disabled>执行此示例</button><button id="unsubscribe" type="button" hidden>取消主题订阅</button><span id="run-status" role="status"></span></div>
+        <p id="subscription-status" class="hint" hidden></p>
+      </section>
+      </div>
+      <section class="panel" aria-labelledby="result-title">
+        <div class="section-heading"><h2 id="result-title">3. 实际结果</h2><span id="result-meta" class="hint"></span></div>
+        <pre id="result" role="status">尚未执行此示例。</pre>
+        <div id="chat-followup" hidden><label for="followup">下一轮用户消息</label><div class="followup"><input id="followup" placeholder="例如：我叫什么？"><button id="append-turn" type="button">将回答与追问填入参数</button></div><p class="hint">仅填入下一轮参数，点击“执行此示例”才会发送。修改模型会清空此示例的对话草稿。</p></div>
+      </section>
+      <section class="panel"><h2>事件记录 <small>主题订阅回调</small></h2><pre id="events">尚未收到事件。</pre></section>
+      <section class="panel"><div class="section-heading"><h2>本页调用记录 <small>最多 30 条</small></h2><button id="clear-history" type="button">清空记录</button></div><ol id="history"><li class="hint">连接成功后记录 context.get；点击记录可查看当次参数和结果。</li></ol></section>
+      <footer>能力由 Workbench 授权转发。目录授权在 Workbench 设置页管理；SDK 中的 views、workbench 管理接口不属于小程序能力。</footer>
+    </main>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body></html>
